@@ -8,6 +8,10 @@ if os.path.exists(_tmp_db):
     os.remove(_tmp_db)
 os.environ["DATABASE_URL"] = f"sqlite:///{_tmp_db}"
 os.environ["SEED_ON_STARTUP"] = "true"
+# Keep discovery tests hermetic regardless of any local .env: pretend no key is
+# configured so the "not configured" code paths are exercised deterministically.
+os.environ["NEWS_API_KEY"] = ""
+os.environ["NEWS_AUTO_FETCH"] = "false"
 
 import json  # noqa: E402
 
