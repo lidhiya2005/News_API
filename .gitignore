@@ -1,0 +1,36 @@
+# ---------- Dependencies ----------
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# ---------- Build output ----------
+dist/
+build/
+*.tsbuildinfo
+
+# ---------- Environment & secrets ----------
+.env
+.env.*
+!.env.example
+*.local
+
+# ---------- Databases ----------
+*.db
+*.sqlite
+*.sqlite3
+
+# ---------- Test / tooling caches ----------
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+.eslintcache
+
+# ---------- OS / editor ----------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
