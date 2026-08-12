@@ -79,6 +79,7 @@ class Article(Base):
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     is_breaking: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     views: Mapped[int] = mapped_column(Integer, default=0)
+    ai_summary: Mapped[str | None] = mapped_column(Text)  # cached Gemini summary
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     source: Mapped["Source | None"] = relationship(back_populates="articles")

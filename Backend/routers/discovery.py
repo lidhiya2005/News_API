@@ -1,5 +1,5 @@
 """Discovery endpoints: live third-party fetching, search, run history, and trending."""
-from datetime import timedelta
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -80,9 +80,26 @@ def search_live_news(
     q: str = Query(min_length=2, max_length=100),
     language: str = Query(default="en", min_length=2, max_length=5),
     page_size: int = Query(default=20, ge=1, le=100),
+    from_date: date | None = Query(
+        default=None, description="Only results published on/after this date (YYYY-MM-DD)"
+    ),
+    to_date: date | None = Query(
+        default=None, description="Only results published on/before this date (YYYY-MM-DD)"
+    ),
 ) -> DiscoveryRun:
-    """Search the provider for recent articles matching a keyword (auth required)."""
-    run = run_news_search(db, query=q, language=language, page_size=page_size)
+    """Search the provider for articles matching a keyword (auth required).
+
+    Optional ``from_date`` / ``to_date`` narrow the publication window so
+    archived (past) stories can be pulled in.
+    """
+    run = run_news_search(
+        db,
+        query=q,
+        language=language,
+        page_size=page_size,
+        from_date=from_date.isoformat() if from_date else None,
+        to_date=to_date.isoformat() if to_date else None,
+    )
     if run.status == "error":
         _raise_run_error(run)
     return run

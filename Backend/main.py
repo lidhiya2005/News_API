@@ -20,13 +20,21 @@ logger = logging.getLogger("uvicorn.error")
 def _apply_lightweight_migrations() -> None:
     """Add columns that were introduced after a dev database was first created."""
     inspector = inspect(engine)
-    if "discovery_runs" not in inspector.get_table_names():
-        return
-    existing = {col["name"] for col in inspector.get_columns("discovery_runs")}
-    if "error_code" not in existing:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE discovery_runs ADD COLUMN error_code VARCHAR(20)"))
-        logger.info("[migration] added discovery_runs.error_code")
+    tables = set(inspector.get_table_names())
+
+    if "discovery_runs" in tables:
+        existing = {col["name"] for col in inspector.get_columns("discovery_runs")}
+        if "error_code" not in existing:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE discovery_runs ADD COLUMN error_code VARCHAR(20)"))
+            logger.info("[migration] added discovery_runs.error_code")
+
+    if "articles" in tables:
+        existing = {col["name"] for col in inspector.get_columns("articles")}
+        if "ai_summary" not in existing:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE articles ADD COLUMN ai_summary TEXT"))
+            logger.info("[migration] added articles.ai_summary")
 
 
 async def _auto_discovery_loop() -> None:

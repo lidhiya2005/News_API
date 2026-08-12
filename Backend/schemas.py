@@ -164,7 +164,16 @@ class ArticleOut(BaseModel):
     is_featured: bool
     is_breaking: bool
     views: int
+    ai_summary: str | None
     created_at: datetime
+
+
+class ArticleSummaryOut(BaseModel):
+    """Result of an AI summarization request."""
+
+    summary: str
+    model: str
+    cached: bool
 
 
 # --------------------------------------------------------------------------

@@ -60,6 +60,7 @@ The server is then available at `http://localhost:8000` with docs at
 | POST   | `/api/articles`                   | ✔    | Create article                       |
 | PUT    | `/api/articles/{id}`              | ✔    | Update article                       |
 | DELETE | `/api/articles/{id}`              | ✔    | Delete article                       |
+| POST   | `/api/articles/{id}/summary`       | —    | AI summary of an article (Gemini, public; fetches full text when the provider truncated it) |
 | GET    | `/api/categories`                 | —    | List categories                      |
 | GET    | `/api/sources`                    | —    | List sources                         |
 | GET    | `/api/bookmarks`                  | ✔    | My bookmarks                         |
@@ -91,6 +92,8 @@ GET /api/articles?q=climate&category=environment&sort=popular&page=1&size=10
 | `NEWS_FETCH_INTERVAL_MINUTES` | `60`                         | Auto-fetch interval              |
 | `NEWS_COUNTRY`            | `us`                             | Default country for headlines    |
 | `NEWS_AUTO_CATEGORIES`    | `technology,business,...`        | Categories fetched on schedule   |
+| `GEMINI_API_KEY`          | *(unset)*                        | Enable AI article summaries      |
+| `GEMINI_MODEL`            | `gemini-3.5-flash`               | Model used for AI summaries      |
 | `SEED_ON_STARTUP`         | `true`                           | Seed demo data on startup        |
 
 ## Running tests

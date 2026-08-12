@@ -1,9 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client";
-import type { Article } from "../types";
+import type { Article, ArticleSummary } from "../types";
 import { formatDate, formatViews } from "../utils";
 import { useBookmark } from "../hooks/useBookmark";
+
+// Fallback label when the backend model isn't known yet (e.g. cached summaries).
+const DEFAULT_MODEL = "Gemini 3.5 Flash";
+
+function formatModel(model: string): string {
+  // "gemini-3.5-flash" -> "Gemini 3.5 Flash"
+  return model
+    .split("-")
+    .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
+    .join(" ");
+}
 
 export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
@@ -12,16 +23,35 @@ export default function ArticlePage() {
   const [error, setError] = useState<string | null>(null);
   const { isSaved, toggle, busy } = useBookmark(articleId);
 
+  const [summary, setSummary] = useState<ArticleSummary | null>(null);
+  const [summaryBusy, setSummaryBusy] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  // Tracks the article currently on screen so in-flight requests from a
+  // previous article can be discarded (closure-captured articleId can't).
+  const currentIdRef = useRef(articleId);
+  currentIdRef.current = articleId;
+
   useEffect(() => {
     if (!Number.isFinite(articleId) || articleId <= 0) {
       setError("Article not found");
       return;
     }
     let cancelled = false;
+    // Reset AI summary state when switching between articles on this route.
+    setSummary(null);
+    setSummaryError(null);
+    setSummaryBusy(false);
     api
       .get<Article>(`/articles/${articleId}`)
       .then((data) => {
-        if (!cancelled) setArticle(data);
+        if (!cancelled) {
+          setArticle(data);
+          // A previously generated summary ships with the article payload.
+          if (data.ai_summary) {
+            setSummary({ summary: data.ai_summary, model: "", cached: true });
+          }
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "Article not found");
@@ -30,6 +60,34 @@ export default function ArticlePage() {
       cancelled = true;
     };
   }, [articleId]);
+
+  async function generateSummary() {
+    const targetId = articleId;
+    setSummaryBusy(true);
+    setSummaryError(null);
+    try {
+      const result = await api.post<ArticleSummary>(`/articles/${targetId}/summary`);
+      // Ignore the response if the user navigated to another article meanwhile.
+      if (targetId !== currentIdRef.current) return;
+      setSummary(result);
+      // Keep the article payload in sync so a later visit shows the cached summary.
+      setArticle((prev) =>
+        prev && prev.id === targetId ? { ...prev, ai_summary: result.summary } : prev,
+      );
+    } catch (err) {
+      if (targetId === currentIdRef.current) {
+        setSummaryError(err instanceof Error ? err.message : "Could not generate the summary.");
+      }
+    } finally {
+      if (targetId === currentIdRef.current) setSummaryBusy(false);
+    }
+  }
+
+  // Auto-generate the AI summary as soon as the article opens (no login needed).
+  useEffect(() => {
+    if (!article || article.ai_summary || summary || summaryBusy || summaryError) return;
+    void generateSummary();
+  }, [article]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) {
     return (
@@ -120,6 +178,38 @@ export default function ArticlePage() {
               </button>
             </div>
           </header>
+
+          <section className="panel ai-summary">
+            <header className="ai-summary-head">
+              <h3 className="panel-title">✨ AI summary</h3>
+              <span className="ai-summary-badge">
+                {summary?.model ? formatModel(summary.model) : DEFAULT_MODEL}
+              </span>
+              {summary?.cached && <span className="ai-summary-cached">cached</span>}
+            </header>
+
+            {summary ? (
+              <p className="ai-summary-text">{summary.summary}</p>
+            ) : summaryBusy ? (
+              <div className="ai-summary-loading" role="status" aria-live="polite">
+                <span className="ai-summary-spinner" aria-hidden="true" />
+                <p>Summarizing this article with {DEFAULT_MODEL}…</p>
+              </div>
+            ) : summaryError ? (
+              <>
+                <p className="notice notice-error">{summaryError}</p>
+                <button
+                  type="button"
+                  className="link-button ai-summary-retry"
+                  onClick={() => void generateSummary()}
+                >
+                  Try again
+                </button>
+              </>
+            ) : (
+              <p className="ai-summary-note">Generating a full AI summary…</p>
+            )}
+          </section>
 
           {article.image_url && (
             <img

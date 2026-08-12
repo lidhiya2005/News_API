@@ -12,8 +12,10 @@ os.environ["SEED_ON_STARTUP"] = "true"
 # configured so the "not configured" code paths are exercised deterministically.
 os.environ["NEWS_API_KEY"] = ""
 os.environ["NEWS_AUTO_FETCH"] = "false"
+os.environ["GEMINI_API_KEY"] = ""  # same for AI summaries
 
 import json  # noqa: E402
+from types import SimpleNamespace  # noqa: E402
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -192,6 +194,106 @@ def test_create_article_requires_auth(client):
 
 
 # ---------------------------------------------------------------------------
+# AI summarization (Gemini)
+# ---------------------------------------------------------------------------
+def _article_with_content(client) -> dict:
+    page = client.get("/api/articles", params={"size": 100})
+    return next(a for a in page.json()["items"] if a["content"])
+
+
+def _fake_gemini_settings():
+    return SimpleNamespace(GEMINI_API_KEY="test-key", GEMINI_MODEL="gemini-3.5-flash")
+
+
+def test_article_summary_is_public_and_not_configured(client):
+    """The summary endpoint needs no auth: guests hit the 'not configured' path."""
+    article = _article_with_content(client)
+    response = client.post(f"/api/articles/{article['id']}/summary")
+    # No GEMINI_API_KEY in the test environment -> clear 400 naming the variable
+    # (a 401 would mean the endpoint still required authentication).
+    assert response.status_code == 400
+    assert "GEMINI_API_KEY" in response.json()["detail"]
+
+
+def test_article_summary_generated_and_cached(client, monkeypatch):
+    captured = {}
+
+    def fake_call_gemini(settings, prompt):
+        captured["api_key"] = settings.GEMINI_API_KEY
+        captured["model"] = settings.GEMINI_MODEL
+        captured["prompt"] = prompt
+        return "A concise AI summary of the article."
+
+    monkeypatch.setattr("services.summarizer.get_settings", _fake_gemini_settings)
+    monkeypatch.setattr("services.summarizer._call_gemini", fake_call_gemini)
+    # Never touch the network in tests.
+    monkeypatch.setattr("services.summarizer._fetch_full_text", lambda url: None)
+
+    article = _article_with_content(client)
+
+    first = client.post(f"/api/articles/{article['id']}/summary")
+    assert first.status_code == 200
+    body = first.json()
+    assert body["summary"] == "A concise AI summary of the article."
+    assert body["cached"] is False
+    assert body["model"] == "gemini-3.5-flash"
+    assert captured["api_key"] == "test-key"
+    # The prompt must include the article body so Gemini can summarize it.
+    assert "Title:" in captured["prompt"]
+
+    # The summary is persisted, so the second request must not call Gemini again.
+    second = client.post(f"/api/articles/{article['id']}/summary")
+    assert second.status_code == 200
+    assert second.json()["cached"] is True
+
+    # Cached summary is now exposed on the article detail response too.
+    detail = client.get(f"/api/articles/{article['id']}")
+    assert detail.json()["ai_summary"] == "A concise AI summary of the article."
+
+
+def test_article_summary_fetches_full_text_when_truncated(client, monkeypatch):
+    """NewsAPI-style truncated bodies trigger a full-text fetch from the URL."""
+    captured = {}
+
+    def fake_call_gemini(settings, prompt):
+        captured["prompt"] = prompt
+        return "A full summary of the complete story."
+
+    def fake_fetch_full_text(url):
+        captured["url"] = url
+        return (
+            "This is the complete article text fetched from the original page, "
+            "covering every paragraph of the full story for Gemini to summarize."
+        )
+
+    monkeypatch.setattr("services.summarizer.get_settings", _fake_gemini_settings)
+    monkeypatch.setattr("services.summarizer._call_gemini", fake_call_gemini)
+    monkeypatch.setattr("services.summarizer._fetch_full_text", fake_fetch_full_text)
+
+    token = _login_demo(client)
+    created = client.post(
+        "/api/articles",
+        headers=auth_headers(token),
+        json={
+            "title": "Truncated Story Test",
+            "summary": "Short description from the provider.",
+            "content": "Only the opening paragraph is provided by the free tier... [+1200 chars]",
+            "url": "https://example.com/full-story",
+        },
+    )
+    assert created.status_code == 201
+    article_id = created.json()["id"]
+
+    response = client.post(f"/api/articles/{article_id}/summary")
+    assert response.status_code == 200
+    assert response.json()["summary"] == "A full summary of the complete story."
+    assert captured["url"] == "https://example.com/full-story"
+    # Gemini must receive the fetched full text, not the truncated snippet.
+    assert "complete article text" in captured["prompt"]
+    assert "[+1200 chars]" not in captured["prompt"]
+
+
+# ---------------------------------------------------------------------------
 # Categories & sources management
 # ---------------------------------------------------------------------------
 def test_create_category_and_list(client):
@@ -338,6 +440,28 @@ def test_discovery_search_mocked(client, monkeypatch):
     assert body["status"] == "success"
     assert body["imported"] == 3
     assert body["trigger"] == "search"
+
+
+def test_discovery_search_with_dates_mocked(client, monkeypatch):
+    captured = {}
+
+    def capturing_fetch_json(endpoint, params):
+        captured.update(params)
+        return fake_fetch_json(endpoint, params)
+
+    monkeypatch.setattr("services.news_fetcher._fetch_json", capturing_fetch_json)
+    token = _login_demo(client)
+
+    response = client.post(
+        "/api/discovery/search",
+        headers=auth_headers(token),
+        params={"q": "climate", "from_date": "2026-07-01", "to_date": "2026-07-31"},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    # The provider request must carry the publication window for past news.
+    assert captured.get("from") == "2026-07-01"
+    assert captured.get("to") == "2026-07-31"
 
 
 def test_discovery_status_and_runs(client):

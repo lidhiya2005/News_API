@@ -19,6 +19,8 @@ export default function ArticleFeed({ showHeader = true }: { showHeader?: boolea
   const page = parsePage(searchParams.get("page"));
   const featured = searchParams.get("featured") === "1";
   const breaking = searchParams.get("breaking") === "1";
+  const fromDate = searchParams.get("from_date") ?? "";
+  const toDate = searchParams.get("to_date") ?? "";
 
   const [input, setInput] = useState(q);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -47,6 +49,8 @@ export default function ArticleFeed({ showHeader = true }: { showHeader?: boolea
           sort,
           featured: featured ? true : undefined,
           breaking: breaking ? true : undefined,
+          from_date: fromDate || undefined,
+          to_date: toDate || undefined,
           page,
           size: 12,
         })}`,
@@ -65,7 +69,7 @@ export default function ArticleFeed({ showHeader = true }: { showHeader?: boolea
     return () => {
       cancelled = true;
     };
-  }, [q, category, sort, page, featured, breaking]);
+  }, [q, category, sort, page, featured, breaking, fromDate, toDate]);
 
   function apply(updates: Record<string, string | null>) {
     const next = new URLSearchParams(searchParams);
@@ -128,6 +132,28 @@ export default function ArticleFeed({ showHeader = true }: { showHeader?: boolea
           </select>
         </div>
         <div className="toolbar-row toolbar-row-secondary">
+          <label className="toolbar-field toolbar-field-inline">
+            <span>From</span>
+            <input
+              type="date"
+              className="toolbar-date"
+              value={fromDate}
+              onChange={(e) => apply({ from_date: e.target.value || null })}
+              aria-label="Published from date"
+              title="Only stories published on or after this date"
+            />
+          </label>
+          <label className="toolbar-field toolbar-field-inline">
+            <span>To</span>
+            <input
+              type="date"
+              className="toolbar-date"
+              value={toDate}
+              onChange={(e) => apply({ to_date: e.target.value || null })}
+              aria-label="Published to date"
+              title="Only stories published on or before this date"
+            />
+          </label>
           <button
             type="button"
             className={`chip${featured ? " chip-on" : ""}`}
@@ -147,7 +173,14 @@ export default function ArticleFeed({ showHeader = true }: { showHeader?: boolea
           <button type="submit" className="btn btn-primary btn-small">
             Search
           </button>
-          {(q || category || sort !== "newest" || featured || breaking || page > 1) && (
+          {(q ||
+            category ||
+            sort !== "newest" ||
+            featured ||
+            breaking ||
+            fromDate ||
+            toDate ||
+            page > 1) && (
             <button
               type="button"
               className="link-button"

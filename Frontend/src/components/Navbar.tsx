@@ -37,6 +37,9 @@ export default function Navbar() {
           <NavLink to="/browse" className={navLinkClass}>
             Browse
           </NavLink>
+          <NavLink to="/live" className={navLinkClass}>
+            Live
+          </NavLink>
           {user && (
             <NavLink to="/bookmarks" className={navLinkClass}>
               Bookmarks

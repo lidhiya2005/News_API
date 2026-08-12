@@ -46,6 +46,10 @@ class Settings(BaseSettings):
         "entertainment",
     ]
 
+    # AI article summarization (optional, via Google Gemini)
+    GEMINI_API_KEY: str | None = None
+    GEMINI_MODEL: str = "gemini-3.5-flash"
+
     # Behaviour
     SEED_ON_STARTUP: bool = True
 

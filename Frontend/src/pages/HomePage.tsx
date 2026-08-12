@@ -98,6 +98,9 @@ export default function HomePage() {
                   </div>
                 )}
               </dl>
+              <Link to="/live" className="btn btn-ghost btn-small panel-cta">
+                Open live news →
+              </Link>
             </section>
           )}
         </aside>

@@ -193,14 +193,24 @@ def search_news(
     query: str,
     language: str = "en",
     page_size: int = 20,
+    from_date: str | None = None,
+    to_date: str | None = None,
 ) -> dict:
-    """Search recent news for a keyword and store new articles."""
+    """Search news for a keyword and store new articles.
+
+    ``from_date`` / ``to_date`` (ISO ``YYYY-MM-DD``) restrict results to a
+    publication window, letting callers pull archived (past) stories.
+    """
     params = {
         "q": query,
         "language": language,
         "sortBy": "publishedAt",
         "pageSize": min(max(1, page_size), 100),
     }
+    if from_date:
+        params["from"] = from_date
+    if to_date:
+        params["to"] = to_date
     payload = _fetch_json("everything", params)
     imported, skipped = _store_articles(db, payload.get("articles", []))
     return {"imported": imported, "skipped": skipped, "categories": []}
@@ -275,6 +285,8 @@ def run_news_search(
     query: str,
     language: str = "en",
     page_size: int = 20,
+    from_date: str | None = None,
+    to_date: str | None = None,
 ) -> DiscoveryRun:
     """Search the provider and record the outcome in a DiscoveryRun row."""
     run = DiscoveryRun(trigger="search")
@@ -282,7 +294,14 @@ def run_news_search(
     db.commit()
     db.refresh(run)
     try:
-        result = search_news(db, query=query, language=language, page_size=page_size)
+        result = search_news(
+            db,
+            query=query,
+            language=language,
+            page_size=page_size,
+            from_date=from_date,
+            to_date=to_date,
+        )
     except Exception as exc:
         return _fail_run(run, db, exc)
     return _finish_run(

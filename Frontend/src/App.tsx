@@ -10,6 +10,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import BookmarksPage from "./pages/BookmarksPage";
 import BrowsePage from "./pages/BrowsePage";
+import LiveNewsPage from "./pages/LiveNewsPage";
 
 function ScrollToTop() {
   const { pathname, search } = useLocation();
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/article/:id" element={<ArticlePage />} />
+          <Route path="/live" element={<LiveNewsPage />} />
           <Route path="/browse" element={<BrowsePage />} />
           <Route path="/bookmarks" element={<BookmarksPage />} />
           <Route path="/login" element={<LoginPage />} />

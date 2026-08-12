@@ -40,6 +40,7 @@ export interface Article {
   is_featured: boolean;
   is_breaking: boolean;
   views: number;
+  ai_summary: string | null;
   created_at: string;
 }
 
@@ -115,3 +116,10 @@ export interface RegisterPayload {
   password: string;
   full_name?: string | null;
 }
+
+export interface ArticleSummary {
+  summary: string;
+  model: string;
+  cached: boolean;
+}
+

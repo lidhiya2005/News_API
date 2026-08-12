@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from auth import get_current_user
 from database import get_db
 from models import Article, Category, Source, User, utcnow
-from schemas import ArticleCreate, ArticleOut, ArticleUpdate, Page
+from schemas import ArticleCreate, ArticleOut, ArticleSummaryOut, ArticleUpdate, Page
+from services.summarizer import SummarizeError, summarize_article
 from utils import paginate, unique_slug
 
 router = APIRouter(prefix="/articles", tags=["articles"])
@@ -87,6 +88,26 @@ def get_article(article_id: int, db: Session = Depends(get_db)) -> Article:
     db.commit()
     db.refresh(article)
     return article
+
+
+@router.post("/{article_id}/summary", response_model=ArticleSummaryOut)
+def get_article_summary(
+    article_id: int,
+    db: Session = Depends(get_db),
+) -> ArticleSummaryOut:
+    """Generate (or return the cached) AI summary for an article (public)."""
+    article = db.get(Article, article_id)
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    try:
+        result = summarize_article(db, article)
+    except SummarizeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return ArticleSummaryOut(
+        summary=result.summary,
+        model=result.model,
+        cached=result.cached,
+    )
 
 
 @router.post("", response_model=ArticleOut, status_code=status.HTTP_201_CREATED)
