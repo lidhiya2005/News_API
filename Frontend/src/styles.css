@@ -905,91 +905,21 @@ select {
   border-radius: var(--radius);
 }
 
-/* AI summary panel */
+/* AI summary text (rendered as plain article content, no box) */
 
-.ai-summary {
-  margin-top: 2rem;
+.article-ai-summary {
+  margin-bottom: 1.35em;
+  padding-bottom: 1.35em;
+  border-bottom: 1px solid var(--line);
 }
 
-.ai-summary-head {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.5rem;
-}
-
-.ai-summary-head .panel-title {
-  margin-bottom: 0;
-}
-
-.ai-summary-badge {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  padding: 0.2rem 0.65rem;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-}
-
-.ai-summary-cached {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+.ai-summary-inline {
+  margin-bottom: 1.35em;
   color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
 }
 
-.ai-summary-text {
-  font-family: var(--font-display);
-  font-size: 1.08rem;
-  line-height: 1.7;
-  margin: 0;
-  color: #23262c;
-  border-left: 3px solid var(--accent);
-  padding-left: 1rem;
-}
-
-.ai-summary-note {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.88rem;
-  max-width: 46ch;
-}
-
-.ai-summary-loading {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.ai-summary-loading p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.92rem;
-}
-
-.ai-summary-spinner {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  border: 2.5px solid var(--accent-soft);
-  border-top-color: var(--accent);
-  animation: ai-summary-spin 0.7s linear infinite;
-}
-
-@keyframes ai-summary-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.ai-summary-retry {
-  margin-top: 0.5rem;
-}
 
 /* ============================================================
    Auth pages

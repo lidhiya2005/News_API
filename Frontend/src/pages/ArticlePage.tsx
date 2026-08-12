@@ -5,17 +5,6 @@ import type { Article, ArticleSummary } from "../types";
 import { formatDate, formatViews } from "../utils";
 import { useBookmark } from "../hooks/useBookmark";
 
-// Fallback label when the backend model isn't known yet (e.g. cached summaries).
-const DEFAULT_MODEL = "Gemini 3.5 Flash";
-
-function formatModel(model: string): string {
-  // "gemini-3.5-flash" -> "Gemini 3.5 Flash"
-  return model
-    .split("-")
-    .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
-    .join(" ");
-}
-
 export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
   const articleId = Number.parseInt(id ?? "0", 10);
@@ -179,38 +168,6 @@ export default function ArticlePage() {
             </div>
           </header>
 
-          <section className="panel ai-summary">
-            <header className="ai-summary-head">
-              <h3 className="panel-title">✨ AI summary</h3>
-              <span className="ai-summary-badge">
-                {summary?.model ? formatModel(summary.model) : DEFAULT_MODEL}
-              </span>
-              {summary?.cached && <span className="ai-summary-cached">cached</span>}
-            </header>
-
-            {summary ? (
-              <p className="ai-summary-text">{summary.summary}</p>
-            ) : summaryBusy ? (
-              <div className="ai-summary-loading" role="status" aria-live="polite">
-                <span className="ai-summary-spinner" aria-hidden="true" />
-                <p>Summarizing this article with {DEFAULT_MODEL}…</p>
-              </div>
-            ) : summaryError ? (
-              <>
-                <p className="notice notice-error">{summaryError}</p>
-                <button
-                  type="button"
-                  className="link-button ai-summary-retry"
-                  onClick={() => void generateSummary()}
-                >
-                  Try again
-                </button>
-              </>
-            ) : (
-              <p className="ai-summary-note">Generating a full AI summary…</p>
-            )}
-          </section>
-
           {article.image_url && (
             <img
               className="article-hero"
@@ -223,6 +180,24 @@ export default function ArticlePage() {
           )}
 
           <div className="article-body">
+            {summary && <p className="article-ai-summary">{summary.summary}</p>}
+            {!summary && summaryBusy && (
+              <p className="ai-summary-inline" role="status" aria-live="polite">
+                Summarizing this article…
+              </p>
+            )}
+            {!summary && summaryError && (
+              <p className="ai-summary-inline">
+                {summaryError}{" "}
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => void generateSummary()}
+                >
+                  Try again
+                </button>
+              </p>
+            )}
             {paragraphs.length > 0 ? (
               paragraphs.map((p, i) => <p key={i}>{p}</p>)
             ) : (
